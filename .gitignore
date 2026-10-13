@@ -1,0 +1,17 @@
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+target/
+backend/target/
+.env
+.env.*
+!.env.example
+maven/
+scratch/
+*.log
+*.jar
+.DS_Store
+.idea/
+.vscode/
+*.iml
