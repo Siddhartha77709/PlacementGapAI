@@ -108,17 +108,20 @@ export default function DashboardPage({ data, loading }) {
             </div>
 
             <div className="divide-y divide-slate-100 flex-1">
-              {(data?.gaps?.missing || []).slice(0, 5).map((skill) => (
-                <div key={skill} className="py-3 flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2 font-medium text-slate-800">
-                    <span className="w-2 h-2 rounded-full bg-[#EF4444]" />
-                    <span>{skill}</span>
+              {(data?.gaps?.missing || []).slice(0, 5).map((skill, idx) => {
+                const skillLabel = typeof skill === 'object' ? (skill.skill || skill.name || '') : String(skill || '');
+                return (
+                  <div key={skillLabel || idx} className="py-3 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2 font-medium text-slate-800">
+                      <span className="w-2 h-2 rounded-full bg-[#EF4444]" />
+                      <span>{skillLabel}</span>
+                    </div>
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-red-50 text-red-700 border border-red-200">
+                      Missing
+                    </span>
                   </div>
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-red-50 text-red-700 border border-red-200">
-                    Missing
-                  </span>
-                </div>
-              ))}
+                );
+              })}
               {(!data?.gaps?.missing || data.gaps.missing.length === 0) && (
                 <div className="py-8 text-center text-xs text-slate-400">
                   No missing skill gaps detected! Great job.

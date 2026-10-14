@@ -1,5 +1,4 @@
 // Relative path enforces same-origin requests through Cloudflare Pages reverse proxy.
-// This completely eradicates all browser cross-origin CORS blocks!
 const API_BASE = '';
 
 let backendOffline = false;
@@ -14,10 +13,28 @@ const DEFAULT_PROFILE = {
   projectsText: 'PlacementGap AI - Full-stack career intelligence platform with Spring Boot and React.\nE-commerce Microservices - Scalable distributed architecture with MySQL persistence.'
 };
 
+function sanitizeAnalysis(data) {
+  if (!data) return data;
+  if (data.gaps) {
+    if (Array.isArray(data.gaps.missing)) {
+      data.gaps.missing = data.gaps.missing.map((s) => (typeof s === 'object' ? (s.skill || s.name || '') : s));
+    }
+    if (Array.isArray(data.gaps.weak)) {
+      data.gaps.weak = data.gaps.weak.map((s) => (typeof s === 'object' ? (s.skill || s.name || '') : s));
+    }
+    if (Array.isArray(data.gaps.mastered)) {
+      data.gaps.mastered = data.gaps.mastered.map((s) => (typeof s === 'object' ? (s.skill || s.name || '') : s));
+    }
+  }
+  return data;
+}
+
 function getStorage(key, fallback) {
   try {
     const val = localStorage.getItem(key);
-    return val ? JSON.parse(val) : fallback;
+    if (!val) return fallback;
+    const parsed = JSON.parse(val);
+    return key === 'pgai_analysis' ? sanitizeAnalysis(parsed) : parsed;
   } catch {
     return fallback;
   }
@@ -25,7 +42,8 @@ function getStorage(key, fallback) {
 
 function setStorage(key, val) {
   try {
-    localStorage.setItem(key, JSON.stringify(val));
+    const sanitized = key === 'pgai_analysis' ? sanitizeAnalysis(val) : val;
+    localStorage.setItem(key, JSON.stringify(sanitized));
   } catch {
     // Ignore storage errors in restricted contexts
   }
@@ -63,17 +81,17 @@ function generateClientAnalysis(payload) {
     const hasSkill = candidateSkillsText.includes(skill.name.toLowerCase().split(' ')[0]);
     if (hasSkill) {
       if (Math.random() > 0.3) {
-        mastered.push({ skill: skill.name, detail: `Demonstrated in resume and profile background (${skill.cat})` });
+        mastered.push(skill.name);
       } else {
-        weak.push({ skill: skill.name, detail: `Foundational exposure detected; advanced depth recommended (${skill.cat})` });
+        weak.push(skill.name);
       }
     } else {
-      missing.push({ skill: skill.name, detail: `Key requirement specified in job description not yet highlighted (${skill.cat})` });
+      missing.push(skill.name);
     }
   });
 
   if (missing.length === 0) {
-    missing.push({ skill: 'System Design & Distributed Caching', detail: 'Crucial for high-throughput enterprise deployments' });
+    missing.push('System Design & Distributed Caching');
   }
 
   const total = missing.length + weak.length + mastered.length || 1;
@@ -177,7 +195,8 @@ async function request(endpoint, options = {}) {
 
     if (response.ok) {
       try {
-        return await response.json();
+        const json = await response.json();
+        return sanitizeAnalysis(json);
       } catch {
         return null;
       }
@@ -208,14 +227,10 @@ export const api = {
   saveProfile: async (payload) => {
     setStorage('pgai_profile', payload);
     try {
-      const data = await request('/api/v1/profile', {
+      await request('/api/v1/profile', {
         method: 'PUT',
         body: JSON.stringify(payload)
       });
-      if (data) {
-        setStorage('pgai_profile', data);
-        return data;
-      }
     } catch {
       // Saved locally
     }
@@ -227,7 +242,7 @@ export const api = {
       const data = await request('/api/v1/progress');
       if (data && data.readiness !== undefined) {
         setStorage('pgai_analysis', data);
-        return data;
+        return sanitizeAnalysis(data);
       }
     } catch {
       // Fallback
@@ -240,7 +255,7 @@ export const api = {
       const data = await request('/api/v1/roadmap');
       if (data && data.roadmap) {
         setStorage('pgai_analysis', data);
-        return data;
+        return sanitizeAnalysis(data);
       }
     } catch {
       // Fallback
@@ -255,7 +270,7 @@ export const api = {
       });
       if (data) {
         setStorage('pgai_analysis', data);
-        return data;
+        return sanitizeAnalysis(data);
       }
     } catch {
       // Fallback
@@ -278,7 +293,7 @@ export const api = {
     const doneCount = updatedRoadmap.filter((r) => r.done).length;
     const progressPct = Math.round((doneCount / total) * 100);
 
-    const updated = {
+    const updated = sanitizeAnalysis({
       ...current,
       completedIds,
       roadmap: updatedRoadmap,
@@ -288,7 +303,7 @@ export const api = {
         projects: progressPct,
         interview: progressPct
       }
-    };
+    });
 
     setStorage('pgai_analysis', updated);
     return updated;
@@ -302,7 +317,7 @@ export const api = {
       });
       if (data && data.roadmap) {
         setStorage('pgai_analysis', data);
-        return data;
+        return sanitizeAnalysis(data);
       }
     } catch {
       // Fallback

@@ -101,17 +101,20 @@ export default function GapsPage({ data }) {
               </div>
 
               <div className="p-4 flex-1 divide-y divide-slate-100">
-                {col.skills.map((skill) => (
-                  <div key={skill} className="py-3 first:pt-0 last:pb-0 space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold text-xs text-slate-900">{skill}</span>
-                      <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full border ${col.badgeClass}`}>
-                        {col.priority}
-                      </span>
+                {col.skills.map((skill, idx) => {
+                  const skillLabel = typeof skill === 'object' ? (skill.skill || skill.name || '') : String(skill || '');
+                  return (
+                    <div key={skillLabel || idx} className="py-3 first:pt-0 last:pb-0 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-xs text-slate-900">{skillLabel}</span>
+                        <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full border ${col.badgeClass}`}>
+                          {col.priority}
+                        </span>
+                      </div>
+                      <div className="text-[10px] text-slate-400 font-medium">{col.proficiency}</div>
                     </div>
-                    <div className="text-[10px] text-slate-400 font-medium">{col.proficiency}</div>
-                  </div>
-                ))}
+                  );
+                })}
 
                 {col.skills.length === 0 && (
                   <div className="py-8 text-center text-xs text-slate-400 font-medium">
