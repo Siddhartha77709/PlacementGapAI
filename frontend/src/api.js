@@ -1,4 +1,8 @@
-const API_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '');
+// Relative path enforces same-origin requests through Cloudflare Pages reverse proxy.
+// This completely eradicates all browser cross-origin CORS blocks!
+const API_BASE = '';
+
+let backendOffline = false;
 
 const DEFAULT_PROFILE = {
   id: 1,
@@ -146,10 +150,13 @@ function generateClientAnalysis(payload) {
 }
 
 async function request(endpoint, options = {}) {
-  // If no base URL is defined, relative requests hit same-origin proxy
+  if (backendOffline) {
+    return null;
+  }
+
   const url = `${API_BASE}${endpoint}`;
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 6000);
+  const timeoutId = setTimeout(() => controller.abort(), 3500);
 
   const defaultHeaders = {
     'Content-Type': 'application/json',
@@ -175,10 +182,12 @@ async function request(endpoint, options = {}) {
         return null;
       }
     }
-    throw new Error(`HTTP ${response.status}`);
+    backendOffline = true;
+    return null;
   } catch (err) {
     clearTimeout(timeoutId);
-    throw err;
+    backendOffline = true;
+    return null;
   }
 }
 
@@ -191,7 +200,7 @@ export const api = {
         return data;
       }
     } catch {
-      // Backend sleeping or network error: return persisted or default
+      // Fallback
     }
     return getStorage('pgai_profile', DEFAULT_PROFILE);
   },
@@ -208,7 +217,7 @@ export const api = {
         return data;
       }
     } catch {
-      // Successfully saved to client local storage
+      // Saved locally
     }
     return payload;
   },
@@ -221,7 +230,7 @@ export const api = {
         return data;
       }
     } catch {
-      // Graceful fallback
+      // Fallback
     }
     return getStorage('pgai_analysis', null);
   },
@@ -234,7 +243,7 @@ export const api = {
         return data;
       }
     } catch {
-      // Graceful fallback
+      // Fallback
     }
     return getStorage('pgai_analysis', null);
   },
@@ -249,7 +258,7 @@ export const api = {
         return data;
       }
     } catch {
-      // Local completion fallback
+      // Fallback
     }
 
     const current = getStorage('pgai_analysis', null);
@@ -296,7 +305,7 @@ export const api = {
         return data;
       }
     } catch {
-      // Backend error or sleeping: run intelligent client engine
+      // Fallback
     }
 
     const analysis = generateClientAnalysis(payload);
